@@ -1,28 +1,10 @@
-# apiVersion: storage.k8s.io/v1
-# kind: StorageClass
-# metadata:
-#   labels:
-#     app: pingdirectory
-#   name: pingdirectory-gp2
-# mountOptions:
-# - discard
-# parameters:
-#   type: gp2
-# provisioner: kubernetes.io/aws-ebs
-# ---
 apiVersion: v1
 data:
-  K8S_STATEFUL_SET_NAME: pingdirectory
-  K8S_STATEFUL_SET_SERVICE_NAME: pingdirectory
-  MAKELDIF_USERS: "1000"
-  ORCHESTRATION_TYPE: KUBERNETES
   PING_IDENTITY_ACCEPT_EULA: "YES"
-  SERVER_PROFILE_PATH: baseline/pingdirectory
-  SERVER_PROFILE_URL: https://www.github.com/pingidentity/pingidentity-server-profiles.git
-  TAIL_LOG_FILES: '""'
+  SERVER_PROFILE_PATH: getting-started/pingdirectory
+  SERVER_PROFILE_URL: https://kiranveeriaha:51dfcf2617fc792189949f3415e8cb80617ab7d1@github.com/kveeriaha/pingidentity-server-profiles.git
 kind: ConfigMap
 metadata:
-  annotations: {}
   labels:
     role: pingdirectory
   name: pingdirectory-environment-variables
@@ -36,7 +18,7 @@ metadata:
 spec:
   ports:
   - name: http
-    port: 8080
+    port: 6080
   selector:
     role: pingdataconsole
 ---
@@ -50,11 +32,11 @@ spec:
   clusterIP: None
   ports:
   - name: ldaps
-    port: 636
+    port: 6636
   - name: ssl
-    port: 443
+    port: 6443
   - name: ldap
-    port: 389
+    port: 6389
   selector:
     role: pingdirectory
 ---
@@ -77,15 +59,16 @@ spec:
     spec:
       containers:
       - image: pingidentity/pingdataconsole:edge
+        imagePullPolicy: Always
         name: pingdataconsole
         ports:
-        - containerPort: 8080
+        - containerPort: 6080
         resources:
           limits:
-            cpu: "1"
+            cpu: 1G
             memory: 1.5Gi
           requests:
-            cpu: "1"
+            cpu: 1G
             memory: 1.5Gi
 ---
 apiVersion: apps/v1
@@ -95,7 +78,7 @@ metadata:
     role: pingdirectory
   name: pingdirectory
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       role: pingdirectory
@@ -114,6 +97,7 @@ spec:
             name: devops-secret
             optional: true
         image: pingidentity/pingdirectory:edge
+        imagePullPolicy: Always
         lifecycle:
           preStop:
             exec:
@@ -131,9 +115,9 @@ spec:
           periodSeconds: 30
         name: pingdirectory
         ports:
-        - containerPort: 636
-        - containerPort: 443
-        - containerPort: 389
+        - containerPort: 6636
+        - containerPort: 6443
+        - containerPort: 6389
         readinessProbe:
           exec:
             command:
@@ -147,21 +131,4 @@ spec:
           requests:
             cpu: "2"
             memory: 2Gi
-        volumeMounts:
-        - mountPath: /opt/out
-          name: out-dir
       terminationGracePeriodSeconds: 300
-      volumes:
-      - name: out-dir
-        persistentVolumeClaim:
-          claimName: out-dir
-  volumeClaimTemplates:
-  - metadata:
-      name: out-dir
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 5Gi
-      storageClassName: pingdirectory-gp2
