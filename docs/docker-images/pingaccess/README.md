@@ -7,7 +7,7 @@ Engine nodes.
 
 ## Related Docker Images
 - `pingidentity/pingbase` - Parent Image
-	>**This image inherits, and can use, Environment Variables from [pingidentity/pingbase](https://pingidentity-devops.gitbook.io/devops/docker-images/pingbase)**
+	>**This image inherits, and can use, Environment Variables from [pingidentity/pingbase](https://pingidentity-devops.gitbook.io/devops/dockerimagesref/pingbase)**
 - `pingidentity/pingcommon` - Common Ping files (i.e. hook scripts)
 - `pingidentity/pingdownloader` - Used to download product bits
 
@@ -25,6 +25,8 @@ this image.
 | LICENSE_SHORT_NAME  | PA  | 
 | LICENSE_VERSION  | ${LICENSE_VERSION}  | 
 | PA_ADMIN_PASSWORD  | ${INITIAL_ADMIN_PASSWORD:-2FederateM0re}  | Specify a password for administrator user for interaction with admin API 
+| PING_IDENTITY_PASSWORD  | ${PA_ADMIN_PASSWORD}  | 
+| OPERATIONAL_MODE  | STANDALONE  | 
 | PA_ADMIN_PASSWORD_INITIAL  | 2Access  | Change **non-default** password at startup by including this and PA_ADMIN_PASSWORD 
 | STARTUP_COMMAND  | ${SERVER_ROOT_DIR}/bin/run.sh  | 
 | TAIL_LOG_FILES  | ${SERVER_ROOT_DIR}/log/pingaccess.log  | 
@@ -56,7 +58,7 @@ Follow Docker logs with:
 docker logs -f pingaccess
 ```
 
-If using the command above with the embedded [server profile](../server-profiles/README.md), log in with:
+If using the command above with the embedded [server profile](https://pingidentity-devops.gitbook.io/devops/config/containeranatomy), log in with:
 * https://localhost:9000
   * Username: Administrator
 ## Docker Container Hook Scripts

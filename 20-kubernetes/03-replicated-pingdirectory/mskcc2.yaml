@@ -1,10 +1,16 @@
 apiVersion: v1
 data:
+  K8S_STATEFUL_SET_NAME: pingdirectory
+  K8S_STATEFUL_SET_SERVICE_NAME: pingdirectory
+  MAKELDIF_USERS: "1000"
+  ORCHESTRATION_TYPE: KUBERNETES
   PING_IDENTITY_ACCEPT_EULA: "YES"
-  SERVER_PROFILE_PATH: getting-started/pingdirectory
-  SERVER_PROFILE_URL: https://kiranveeriaha:51dfcf2617fc792189949f3415e8cb80617ab7d1@github.com/kveeriaha/pingidentity-server-profiles.git
+  SERVER_PROFILE_PATH: baseline/pingdirectory
+  SERVER_PROFILE_URL: https://github.com/kveeriaha/mskcc/tree/master/mskcc-server-profiles
+  TAIL_LOG_FILES: '""'
 kind: ConfigMap
 metadata:
+  annotations: {}
   labels:
     role: pingdirectory
   name: pingdirectory-environment-variables
@@ -17,8 +23,8 @@ metadata:
   name: pingdataconsole
 spec:
   ports:
-  - name: http
-    port: 6080
+  - name: https
+    port: 8443
   selector:
     role: pingdataconsole
 ---
@@ -32,11 +38,11 @@ spec:
   clusterIP: None
   ports:
   - name: ldaps
-    port: 6636
+    port: 636
   - name: ssl
-    port: 6443
+    port: 443
   - name: ldap
-    port: 6389
+    port: 389
   selector:
     role: pingdirectory
 ---
@@ -62,13 +68,13 @@ spec:
         imagePullPolicy: Always
         name: pingdataconsole
         ports:
-        - containerPort: 6080
+        - containerPort: 8443
         resources:
           limits:
-            cpu: 1G
+            cpu: "1"
             memory: 1.5Gi
           requests:
-            cpu: 1G
+            cpu: "1"
             memory: 1.5Gi
 ---
 apiVersion: apps/v1
@@ -78,7 +84,7 @@ metadata:
     role: pingdirectory
   name: pingdirectory
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       role: pingdirectory
@@ -115,9 +121,9 @@ spec:
           periodSeconds: 30
         name: pingdirectory
         ports:
-        - containerPort: 6636
-        - containerPort: 6443
-        - containerPort: 6389
+        - containerPort: 636
+        - containerPort: 443
+        - containerPort: 389
         readinessProbe:
           exec:
             command:
@@ -132,3 +138,56 @@ spec:
             cpu: "2"
             memory: 2Gi
       terminationGracePeriodSeconds: 300
+---
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/tls
+metadata:
+  name: tls-secret
+data:
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMxekNDQWIrZ0F3SUJBZ0lKQU42ZHpTc0R4KzkwTUEwR0NTcUdTSWIzRFFFQkN3VUFNQm94R0RBV0JnTlYKQkFNTUQzQnBibWN0WkdWMmIzQnpMbU52YlRBZUZ3MHlNREExTVRneE56QXhOVEZhRncwek1EQTFNVFl4TnpBeApOVEZhTUJveEdEQVdCZ05WQkFNTUQzQnBibWN0WkdWMmIzQnpMbU52YlRDQ0FTSXdEUVlKS29aSWh2Y05BUUVCCkJRQURnZ0VQQURDQ0FRb0NnZ0VCQU9CL2tHT1N2SmQ5Qjk4S1h1SmtWazFsNnJLWmV0dEdoMWQ2b2pBUjQ2T20KZTBvemgwaEl4UHNpZTZFNUtuRUg1bWppRmpaOHZvaTVycStGZmlRTi9Fc1dhYVNKQ0MzZEFGVkRMa0FaYlhQdQpMTVpxZkRhR3VBS0htTGFMQXk3V0NiZjRYWVRCR2E2ZFpMN25CbXhUdFZnVG5DaEloelBpanl0ZEErVVdZdEpFCjByT0pFeUpPUHRRbWhocFV2WFYycVVnL0htR1M2SklWSThBZWEwVzhqQ3A5eXRjTk9wNjJpWlNxRDVFVm1nM3kKUzIrUlUrZmtnWVE5YTI2M3BCdTNjSmRPVXhKZjN6dHpLTGlpZyt1c3RtUVQ1aGc1dkpqTVN0NnYzdUoxbCsvawphNEtUTUljdG53MHFOSC9PTEZVWUtud1kvUW1uQlBrNjhjVmhVcHU4Q3lrQ0F3RUFBYU1nTUI0d0hBWURWUjBSCkJCVXdFNElSS2k1d2FXNW5MV1JsZG05d2N5NWpiMjB3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUdrOVV1WWcKd01oQzYwa3Y4UUtJL3NZdi9rVlVOS3NlWWdSZ0FXTGZHQmM2S0JvdmpWejB6MUh3MzdiTmZTaHR6V3VZUitWMApieHE0cWh1ZUVmRzZaY1BiMllPU3dtTThLdzB5MHZXT0lRbXV1Unh2eUlTRnBCYmJGSWxGK2h2T3RDbFVmaG5NCitER3FSZHZmcWx4cnJublBkcUZDV09QMS93dnFOdlA0YzNrWXU0OWpud09rQXdpM2JuR3dHR2hjeG15L2RlL3QKV1ZzWlBLempvaUIySk0yQm9Teml2YmlEdDZnRktoVHRFamRyTUFnZ2tVRlBJWnMyNnU0RTUvVzNDQWVNRkpTRApuMVVLenpjeEtpYng3VGlZaE9nRFU3aGtqcjcrSFB0QWNpWksyYk91YXgwS3VZd1ZqbzZzS0tFeW45WjBjR3dRCmhlUFFIeFdQQldyT2U3UT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV3QUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktvd2dnU21BZ0VBQW9JQkFRRGdmNUJqa3J5WGZRZmYKQ2w3aVpGWk5aZXF5bVhyYlJvZFhlcUl3RWVPanBudEtNNGRJU01UN0ludWhPU3B4QitabzRoWTJmTDZJdWE2dgpoWDRrRGZ4TEZtbWtpUWd0M1FCVlF5NUFHVzF6N2l6R2FudzJocmdDaDVpMml3TXUxZ20zK0YyRXdSbXVuV1MrCjV3WnNVN1ZZRTV3b1NJY3o0bzhyWFFQbEZtTFNSTkt6aVJNaVRqN1VKb1lhVkwxMWRxbElQeDVoa3VpU0ZTUEEKSG10RnZJd3FmY3JYRFRxZXRvbVVxZytSRlpvTjhrdHZrVlBuNUlHRVBXdHV0NlFidDNDWFRsTVNYOTg3Y3lpNApvb1Byckxaa0UrWVlPYnlZekVyZXI5N2lkWmZ2NUd1Q2t6Q0hMWjhOS2pSL3ppeFZHQ3A4R1AwSnB3VDVPdkhGCllWS2J2QXNwQWdNQkFBRUNnZ0VCQUtGV3EvTVRrcHVnVEpiYmdpTmJqclpqQjAvQmc0eXczRFZmT2M0b0hSd1EKV2t5U1NhZ0dQQ0pydnNPNExLczh6VGNWUEhkK0lRUnJ4WUg1QXhWd1E1L0hCTGN0a0FZOTdLNVo4SlE2Y2ZHOQorc25CMzNEa1Vydm1yVGFMSXdkMjVWY2tsRGtDK2EwSENrODBBdWE1SmZ1ZFpEMkRHaitNayszTEZEQ0FiUmJFCjdFSTg0cTdXOE94cG1PT0pPZkg1eXJxeTgzWXBtQ29oQUVVSVVrNjVkVXJSQTN3Y2xvRjFZSkpaRmViS1BqVTYKRWRyazVBVCtDbTR4ZkRuTFlyWC9vMWR5R1VRSHd6YkljdFJOaE5QcWlPYXRCSkR3UXljU3dNTm9UTnJDUTNVUwo3K2JDN0J5RWNsam9LWHEzb0hjcm41MU5mdGt6MzJEU3FNM2FIOVdBdTRFQ2dZRUEvTis4U1YvZ2NaeFUyajNVCmFnbUlLcFU0VUpMSWhjL2lMbVFtU2ZrL2xyanpjempQOEY0YVU5dTRQcHROYnQxV3dzK2ZmcTdhWWdnWmxPemMKRGZOa21RYUp1SS9ad2d5dnZBNTBoM242R1psaUt0ck1OUytyWEUzU0ljNCtOTFdLM3Q4QjZVSlhWMDFZb2w3cwpQOERhOFhpOEN2UjJteHQ1d1ZEeFNxa3FYTEVDZ1lFQTQwWUhWL3VMcyt6bWtDOEt3YVRvRDZGcGpYd3dhVC82ClVkL1Q3eVYvQWY5cG1SZC9GN1FLbzgvTDlTWStKM0UrUzRyYldrd2ZiV04vSEpRUmZlQXNPTk5MWFM2WFJhZ2wKelJoR3dSd0FlWmkveXBieSs1c2ZvNkN4anY0REpFcEJ4OXAzTUhuZDVzRGRhWkNrMERxMUdjbVMzOXdTQ0R1RwpkN25XTUxuQzAva0NnWUVBb0IrZ242bkplc2R1WjUrOVVNUG1hR2lDOTJwcTlXaTBwWUdmU1RvK1ROZWl1UFJoCm42aEc3WkQxTXhldVNhUjRtdlZUM3FraitlMTlIWE42eUk2MXhieUJHdEJrS0Y5V0xEUFBFRFpwNnluWUlxRFgKckZvYUhXSGR6TEJIYmFNRFk2czlENUtGc2U5MVQ2UGgzMkRrZ3dGYnVXZ2hib2hRYWR3eVhuK09KcEVDZ1lFQQpxVXRXMlJFRmhhZG9MK3I2eGpoQ3JMSDk0R2lyM3hyTEtnWGk1dmMxWHBXVllYYUJNM1Rub0JKL3lVTU5kWEFECmlWNEwrMzFNdzcwanlIUDdlNXByRm9FK1dGRUdXZHJoSForQnhRTkl6MHNiUXB1aXNBMWpTZzIvZGRaOUhLRTcKMHRWSGg1S2YydTI3Z0pGQVUrUUhWd2d5SWhMYVU4dVRaTWZIWjFCWWNuRUNnWUVBMDg0RDc0SmRkODJXeXgwdgpDY3VrZzBGa0NyYUhQRjRXTVhmTURJL01haDZLb2llaFhWT1ltNDBUYWF5b2VRd0tHUHozTzZLaGxNNjBXelpxCnAxTlVFZldGYXhMaTdvTWFtcWJSZlJ0Wi8rMHhNQVNoSHZseENNZituMGVSb0N3cjJnK2ZnUXBUUGRjMjBSTmoKWm9zMFZEek92amxvMjBjaVZjaDJYaTkrZnZrPQotLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tCg==
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: pingdataconsole-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx-public
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+spec:
+  tls:
+  - hosts:
+    - pingdataconsole-mskcc.ping-ps-aws.com
+    secretName: tls-secret
+  rules:
+  - host: pingdataconsole-mskcc.ping-ps-aws.com
+    http:
+      paths:
+        # This rule gives external access to the pingdirectory console
+        - path: /console
+          backend:
+            serviceName: pingdataconsole
+            servicePort: 8443
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: pingdirectoryapi-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx-public
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS           
+spec:
+  tls:
+  - hosts:
+    - pingdirectoryapi-mskcc.ping-ps-aws.com
+    secretName: tls-secret
+  rules:
+  - host: pingdirectoryapi-mskcc.ping-ps-aws.com
+    http:
+      paths:
+        # This rule gives external access to the pingdirectory console
+        - path: /directory/v1
+          backend:
+            serviceName: pingdirectory
+            servicePort: 443           
